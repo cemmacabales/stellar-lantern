@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Networks } from '@stellar/stellar-sdk';
 import { scan, type RawSimulation, type ScanResult } from '@lantern/scanner';
 import {
@@ -233,6 +233,67 @@ describe('scanTx on testnet runs the pipeline', () => {
     expect(second.screenTiming!.sincePreviousMs).not.toBeNull();
     expect(second.screenTiming!.sincePreviousMs!).toBeGreaterThanOrEqual(0);
     expect(second.screenTiming!.sincePreviousMs!).toBeLessThan(5_000);
+  });
+
+  describe('the idle gap survives a closed popup (#180)', () => {
+    // A Map-backed localStorage: the popup's storage outlives its JS context.
+    const store = new Map<string, string>();
+    const storage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+    };
+    const KEY = 'lantern.lastScreenAt';
+    const f = fixture('classic-payment');
+    const deps = () => ({ simulate: recorded(f), screen: notFlagged });
+    // A reopened popup: fresh module state, same storage.
+    const reopenedScanTx = async () => {
+      vi.resetModules();
+      return (await import('@core/scan/wallet')).scanTx;
+    };
+
+    beforeEach(() => {
+      store.clear();
+      vi.stubGlobal('localStorage', storage);
+      return () => vi.unstubAllGlobals();
+    });
+
+    it('a scan ~3 minutes after the previous one, in a new popup, reads gte_2m', async () => {
+      store.set(KEY, String(Date.now() - 180_000));
+      const scan = await reopenedScanTx();
+      const v = await scan(testnetInput(f, { destinationFunded: true }), deps());
+      expect(v.screenTiming!.sincePreviousMs!).toBeGreaterThanOrEqual(120_000);
+      expect(v.screenTiming!.sincePreviousMs!).toBeLessThan(200_000);
+      // It stored a timestamp and nothing else.
+      expect([...store.keys()]).toEqual([KEY]);
+      expect(store.get(KEY)).toMatch(/^\d+$/);
+      expect(Number(store.get(KEY))).toBeGreaterThanOrEqual(Date.now() - 5_000);
+    });
+
+    it('a missing, unparsable or future timestamp reads as the first scan', async () => {
+      for (const stored of [undefined, 'soon', '', String(Date.now() + 60_000)]) {
+        store.clear();
+        if (stored !== undefined) store.set(KEY, stored);
+        const scan = await reopenedScanTx();
+        const v = await scan(testnetInput(f, { destinationFunded: true }), deps());
+        expect(v.screenTiming!.sincePreviousMs, String(stored)).toBeNull();
+      }
+    });
+
+    it('a blocked localStorage falls back to memory and never throws', async () => {
+      vi.stubGlobal('localStorage', {
+        getItem: () => {
+          throw new DOMException('blocked', 'SecurityError');
+        },
+        setItem: () => {
+          throw new DOMException('blocked', 'SecurityError');
+        },
+      });
+      const scan = await reopenedScanTx();
+      const first = await scan(testnetInput(f, { destinationFunded: true }), deps());
+      const second = await scan(testnetInput(f, { destinationFunded: true }), deps());
+      expect(first.screenTiming!.sincePreviousMs).toBeNull();
+      expect(second.screenTiming!.sincePreviousMs).not.toBeNull();
+    });
   });
 
   it('a payment to the demo flagged address is flagged / high / block_confirm with the registry entry in the callout', async () => {
