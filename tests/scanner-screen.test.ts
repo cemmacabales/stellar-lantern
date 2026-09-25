@@ -449,6 +449,24 @@ describe('screen stage', () => {
     async (address: string): Promise<ScreenAnswer> =>
       table[address] ?? { outcome: 'not_flagged', source: 'registry' };
 
+  it('reports how long the stage took, lookups concurrent (#180)', async () => {
+    const f = fixture('classic-payment');
+    const request = requestFor(f);
+    const sim = await ingest(request);
+    const set = effects(sim, auth(sim), request);
+    const res = await screen(set, request, {
+      screen: async () => {
+        await new Promise((r) => setTimeout(r, 60));
+        return { outcome: 'unknown', reason: 'timeout', source: 'registry' };
+      },
+    });
+    expect(res.outcome).toBe('unknown');
+    expect(Number.isInteger(res.latencyMs)).toBe(true);
+    expect(res.latencyMs).toBeGreaterThanOrEqual(55);
+    // Concurrent: one delay, not one per counterparty.
+    expect(res.latencyMs).toBeLessThan(1_000);
+  });
+
   it('a reported address is flagged, with reporter / reason / count in the verdict copy', async () => {
     const { fetchImpl } = registryFetch(REG.response);
     const f = fixture('classic-payment');
