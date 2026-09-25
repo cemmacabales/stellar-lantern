@@ -11,6 +11,19 @@ export type ScanAction = 'allow' | 'warn' | 'block_confirm';
 // Mirrors the registry contract's `Reason` enum (src/core/registry/report.ts).
 export type RegistryReason = 'Scam' | 'Phishing' | 'Drainer' | 'Poisoning' | 'Mixer' | 'Other';
 export type RecheckDirection = 'none' | 'escalated' | 'de_escalated' | 'lateral' | 'failed';
+// Why a registry read answered `unknown` (#180) — the screener's own reasons,
+// with anything else as 'other'.
+export type RegistryUnknownReason =
+  | 'timeout'
+  | 'rpc_error'
+  | 'malformed'
+  | 'archived'
+  | 'no_registry'
+  | 'other';
+// How long the screening stage took, and how long the wallet had been idle
+// since the previous screening — buckets, never a raw duration.
+export type ScreenLatency = 'lt_1s' | '1s_2s' | '2s_3s' | 'gte_3s';
+export type ScreenIdle = 'first' | 'lt_30s' | '30s_2m' | 'gte_2m';
 
 // Bundled mini-app ids only (src/core/miniapps/directory.ts) — never a URL.
 // Anything not in this list is reported as 'other'.
@@ -38,6 +51,13 @@ export type TelemetryEvent =
     }
   | { name: 'tx_scanned'; props: { risk: RiskLevel; action: ScanAction } }
   | { name: 'high_risk_gated'; props: { risk: RiskLevel } }
+  // A review whose registry screening came back `unknown` — the "Couldn't
+  // check the recipient" state (#180). Sent alongside its tx_scanned; says
+  // why, how long it took, and whether it followed an idle spell.
+  | {
+      name: 'registry_unknown';
+      props: { reason: RegistryUnknownReason; latency: ScreenLatency; idle: ScreenIdle };
+    }
   // The one-click registry report (#120) — the counter behind §6.3's registry
   // targets. The reason is the contract's closed enum; no address, no fee
   // amount, no note has a slot here.
@@ -67,6 +87,11 @@ export const EVENT_SCHEMA: Record<EventName, Record<string, readonly string[] | 
   tx_signed: { kind: ['sign_and_submit', 'sign_only', 'submit_only'], ok: 'boolean' },
   tx_scanned: { risk: ['low', 'medium', 'high'], action: ['allow', 'warn', 'block_confirm'] },
   high_risk_gated: { risk: ['low', 'medium', 'high'] },
+  registry_unknown: {
+    reason: ['timeout', 'rpc_error', 'malformed', 'archived', 'no_registry', 'other'],
+    latency: ['lt_1s', '1s_2s', '2s_3s', 'gte_3s'],
+    idle: ['first', 'lt_30s', '30s_2m', 'gte_2m'],
+  },
   registry_report_submitted: {
     reason: ['Scam', 'Phishing', 'Drainer', 'Poisoning', 'Mixer', 'Other'],
     ok: 'boolean',

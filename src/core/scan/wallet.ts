@@ -138,7 +138,11 @@ export function recheckDepsFor(rpcUrl: string): PipelineDeps {
 // "which layer produced the sentence": 2 when the hosted explainer's prose
 // was used, 1 for the deterministic pipeline's own sentence. (Legacy used 0
 // for a heuristic low — the pipeline always did the full analysis.)
-export function toScanVerdict(result: ScanResult, latencyMs: number): ScanVerdict {
+export function toScanVerdict(
+  result: ScanResult,
+  latencyMs: number,
+  sincePreviousMs: number | null = null,
+): ScanVerdict {
   const aiSentence = __FEATURE_SCANNER_AI__ && result.explanationSource === 'explainer';
   return {
     risk: result.risk,
@@ -152,6 +156,7 @@ export function toScanVerdict(result: ScanResult, latencyMs: number): ScanVerdic
     screening: result.screen.answers.map((a) => ({ address: a.address, answer: a.answer })),
     net: result.effects.net.map((n) => ({ ...n, asset: { ...n.asset } })),
     approvals: result.effects.approvals.map((a) => ({ ...a, asset: { ...a.asset } })),
+    screenTiming: { ms: result.screen.latencyMs, sincePreviousMs },
   };
 }
 
@@ -168,6 +173,11 @@ export function usesLegacy(input: WalletScanInput): boolean {
   if (__FEATURE_DEMO_AFFORDANCES__ && input.context.forceScenario) return true;
   return false;
 }
+
+// When the last pipeline scan finished, for `screenTiming.sincePreviousMs`
+// (#180): a registry read that fails only after the popup sat idle points at
+// a stale connection, not at the registry.
+let lastScreenAt: number | null = null;
 
 /**
  * Scan a transaction the wallet is about to ask the user to sign.
@@ -187,6 +197,7 @@ export async function scanTx(
     return input.context.network === 'PUBLIC' ? withoutRegistry(legacy) : legacy;
   }
   const started = performance.now();
+  const sincePreviousMs = lastScreenAt === null ? null : Math.round(started - lastScreenAt);
   // No RPC (a network without Soroban and no override) → the pipeline's
   // ingest fails closed with `simulation_unavailable` for Soroban
   // transactions and the screener is absent, so every counterparty is
@@ -196,5 +207,6 @@ export async function scanTx(
     { xdr: input.xdr, networkPassphrase: input.networkPassphrase, context: input.context },
     deps,
   );
-  return toScanVerdict(result, performance.now() - started);
+  lastScreenAt = performance.now();
+  return toScanVerdict(result, lastScreenAt - started, sincePreviousMs);
 }

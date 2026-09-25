@@ -85,7 +85,7 @@ describe('toScanVerdict — ScanResult → the shape the screens render', () => 
     simulation: {} as ScanResult['simulation'],
     auth: {} as ScanResult['auth'],
     effects: { net: [], approvals: [] } as unknown as ScanResult['effects'],
-    screen: { answers: [] } as unknown as ScanResult['screen'],
+    screen: { answers: [], latencyMs: 180 } as unknown as ScanResult['screen'],
   };
 
   it('maps a low result', () => {
@@ -112,6 +112,22 @@ describe('toScanVerdict — ScanResult → the shape the screens render', () => 
       screening: [],
       net: [],
       approvals: [],
+      screenTiming: { ms: 180, sincePreviousMs: null },
+    });
+  });
+
+  it('carries the screening timing and the idle gap for the registry_unknown diagnostic (#180)', () => {
+    const r = {
+      ...base,
+      risk: 'low',
+      action: 'allow',
+      reasons: [],
+      explanation: 'x',
+      explanationSource: 'fallback',
+    } as ScanResult;
+    expect(toScanVerdict(r, 500, 45_000).screenTiming).toEqual({
+      ms: 180,
+      sincePreviousMs: 45_000,
     });
   });
 
@@ -204,6 +220,21 @@ describe('toScanVerdict — ScanResult → the shape the screens render', () => 
 });
 
 describe('scanTx on testnet runs the pipeline', () => {
+  it('times the screening, and each scan knows how long since the previous one (#180)', async () => {
+    const f = fixture('classic-payment');
+    const slow = async () => {
+      await new Promise((r) => setTimeout(r, 60));
+      return { outcome: 'unknown' as const, reason: 'timeout', source: 'registry' };
+    };
+    const deps = { simulate: recorded(f), screen: slow };
+    const first = await scanTx(testnetInput(f, { destinationFunded: true }), deps);
+    const second = await scanTx(testnetInput(f, { destinationFunded: true }), deps);
+    expect(first.screenTiming!.ms).toBeGreaterThanOrEqual(55);
+    expect(second.screenTiming!.sincePreviousMs).not.toBeNull();
+    expect(second.screenTiming!.sincePreviousMs!).toBeGreaterThanOrEqual(0);
+    expect(second.screenTiming!.sincePreviousMs!).toBeLessThan(5_000);
+  });
+
   it('a payment to the demo flagged address is flagged / high / block_confirm with the registry entry in the callout', async () => {
     const f = fixture('classic-payment-to-flagged');
     const v = await scanTx(testnetInput(f), { simulate: recorded(f), screen: flagged });
