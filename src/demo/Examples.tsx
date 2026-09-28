@@ -2,7 +2,7 @@
 // clicks. Each card runs its fixture through the live pipeline, and falls back
 // to the recording only when testnet can't be reached, saying so.
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { EXAMPLES, runExample, type Example, type ExampleOutcome } from './examples';
 import { ScanResultView } from './ScanPanel';
 
@@ -109,8 +109,13 @@ function Card({ example, onRun, running }: { example: Example; onRun: () => void
 
 export function Examples() {
   const [state, setState] = useState<State>({ kind: 'idle' });
+  // Counts clicks. Only the latest run may show its result: a slower earlier
+  // one (a Soroban example retrying a dead testnet, or the same card clicked
+  // twice) must not land after it and replace it.
+  const latest = useRef(0);
 
   async function run(example: Example) {
+    const ticket = ++latest.current;
     setState({ kind: 'running', id: example.id });
     let outcome: ExampleOutcome;
     try {
@@ -118,6 +123,7 @@ export function Examples() {
     } catch {
       outcome = { ok: false, error: 'Something went wrong, and nothing was scanned. Try again.' };
     }
+    if (latest.current !== ticket) return;
     setState({ kind: 'done', id: example.id, outcome });
   }
 
