@@ -13,6 +13,10 @@ import {
 } from './registry';
 
 const EXPLORER = 'https://stellar.expert/explorer/testnet';
+// A registry subject or reporter is a Soroban Address: an account (G…) or a
+// contract (C…), and stellar.expert has a different page for each.
+const explorerHref = (a: string) =>
+  `${EXPLORER}/${a.startsWith('C') ? 'contract' : 'account'}/${a}`;
 
 type State = { kind: 'loading' } | { kind: 'loaded'; read: RegistryRead; ticket: number };
 
@@ -59,7 +63,7 @@ function EntryRow({ row }: { row: Row }) {
       className="rounded-xl border border-outline-variant p-3 text-sm"
     >
       <a
-        href={`${EXPLORER}/account/${e.subject}`}
+        href={explorerHref(e.subject)}
         target="_blank"
         rel="noopener noreferrer"
         className="break-all font-mono text-xs text-on-surface hover:underline"
@@ -83,7 +87,7 @@ function EntryRow({ row }: { row: Row }) {
       <p className="mt-2 text-xs text-on-surface-variant">
         {e.reports} report{e.reports === 1 ? '' : 's'} · reported by{' '}
         <a
-          href={`${EXPLORER}/account/${e.reporter}`}
+          href={explorerHref(e.reporter)}
           target="_blank"
           rel="noopener noreferrer"
           className="font-mono hover:underline"

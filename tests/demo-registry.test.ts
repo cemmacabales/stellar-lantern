@@ -165,6 +165,23 @@ describe('the panel copy', () => {
     );
   });
 
+  it('links a contract (C…) subject to its contract page, not an account page', () => {
+    const html = renderToStaticMarkup(
+      createElement(EntryRow, {
+        row: {
+          index: 0,
+          subject: TESTNET_REGISTRY_ID,
+          state: 'live',
+          entry: { ...entry('Active'), subject: TESTNET_REGISTRY_ID },
+        },
+      }),
+    );
+    expect(html).toContain(
+      `https://stellar.expert/explorer/testnet/contract/${TESTNET_REGISTRY_ID}`,
+    );
+    expect(html).not.toContain(`/account/${TESTNET_REGISTRY_ID}`);
+  });
+
   it('makes Disputed and Revoked visibly different from Active, and says only Active warns', () => {
     const render = (status: string) =>
       renderToStaticMarkup(
