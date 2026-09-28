@@ -6,6 +6,7 @@
 import type { ReactNode } from 'react';
 import { TESTNET_REGISTRY_ID } from '@lantern/scanner';
 import { DEMO_NETWORK } from './scan';
+import { Examples } from './Examples';
 import { ScanPanel } from './ScanPanel';
 
 const REGISTRY_URL = `https://stellar.expert/explorer/testnet/contract/${TESTNET_REGISTRY_ID}`;
@@ -57,7 +58,7 @@ export function Playground() {
               <ScanPanel />
             </Region>
             <Region id="examples" title="Try an example">
-              Seeded examples, including a known scam. Coming next.
+              <Examples />
             </Region>
           </div>
           <Region id="registry" title="Scam registry">
