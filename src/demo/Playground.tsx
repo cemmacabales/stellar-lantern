@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { TESTNET_REGISTRY_ID } from '@lantern/scanner';
 import { DEMO_NETWORK } from './scan';
 import { Examples } from './Examples';
+import { RegistryPanel } from './RegistryPanel';
 import { ScanPanel } from './ScanPanel';
 
 const REGISTRY_URL = `https://stellar.expert/explorer/testnet/contract/${TESTNET_REGISTRY_ID}`;
@@ -62,7 +63,7 @@ export function Playground() {
             </Region>
           </div>
           <Region id="registry" title="Scam registry">
-            Live counts and recent reports from the on-chain registry. Coming next.
+            <RegistryPanel />
           </Region>
         </div>
       </main>
