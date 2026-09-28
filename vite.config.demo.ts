@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import { fileURLToPath, URL } from 'node:url';
@@ -10,16 +10,16 @@ import { flagDefines } from './vite.flags';
 // `scripts/build-demo.mjs` drives it and, with `--check`, fails on drift.
 const repo = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   root: repo('./src/demo'),
   base: '/demo/',
   envDir: repo('.'),
-  // Testnet-only public page. The wallet's demo deny-list affordances stay off
-  // whatever the env says: the playground's seeded examples (#185) are its own.
-  define: {
-    ...flagDefines(loadEnv(mode, repo('.'), 'VITE_FEATURE_')),
-    __FEATURE_DEMO_AFFORDANCES__: 'false',
-  },
+  // Flags pinned to their FLAG_DEFS defaults, never read from the local env:
+  // the output is committed and drift-checked, so it must not depend on the
+  // machine that built it (a local VITE_FEATURE_SCANNER_AI=true would otherwise
+  // change the bundle). DEMO_AFFORDANCES is off by default and stays off: the
+  // playground's seeded examples (#185) are its own.
+  define: flagDefines({}),
   plugins: [
     react(),
     nodePolyfills({ globals: { Buffer: true, global: true, process: true } }),
@@ -48,4 +48,4 @@ export default defineConfig(({ mode }) => ({
     // Committed output: no sourcemaps, so the bundle stays small and diffable.
     sourcemap: false,
   },
-}));
+});
