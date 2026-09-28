@@ -195,6 +195,7 @@ const UNKNOWN_WHY: Record<string, string> = {
   malformed: 'the registry’s answer couldn’t be read',
   archived: 'the registry entry is archived on the ledger',
   no_registry: 'no registry is configured',
+  not_recorded: 'this address isn’t in the offline recording',
 };
 
 /** One row per counterparty. `unknown` is its own tone, never `clear`. */
