@@ -65,6 +65,62 @@ export function entryLedgerKey(contractId: string, subject: string): string {
   ).toXDR('base64');
 }
 
+// The registry's other two keys (#186), for reading it without an account:
+// `count()` / `list()` need a simulated transaction and so a source account,
+// but their state is plain ledger entries anyone can fetch.
+//
+// `DataKey::Count` is INSTANCE storage, so it has no ledger key of its own: it
+// is one slot of the contract instance entry. This returns that instance key,
+// and `decodeCount` reads the slot out of it.
+export function countLedgerKey(contractId: string): string {
+  return xdr.LedgerKey.contractData(
+    new xdr.LedgerKeyContractData({
+      contract: new Address(contractId).toScAddress(),
+      key: xdr.ScVal.scvLedgerKeyContractInstance(),
+      durability: xdr.ContractDataDurability.persistent(),
+    }),
+  ).toXDR('base64');
+}
+
+// `DataKey::Index(i)`: [symbol("Index"), u32(i)], PERSISTENT, 0-based and
+// insertion-ordered. Its value is the subject's Address.
+export function indexLedgerKey(contractId: string, i: number): string {
+  return xdr.LedgerKey.contractData(
+    new xdr.LedgerKeyContractData({
+      contract: new Address(contractId).toScAddress(),
+      key: xdr.ScVal.scvVec([xdr.ScVal.scvSymbol('Index'), xdr.ScVal.scvU32(i)]),
+      durability: xdr.ContractDataDurability.persistent(),
+    }),
+  ).toXDR('base64');
+}
+
+// `Count` out of the instance entry's storage map. Throws if the slot is
+// missing or not a u32: a registry that can't say how many it holds must not
+// read as holding zero.
+export function decodeCount(instanceEntryXdr: string): number {
+  const data = xdr.LedgerEntryData.fromXDR(instanceEntryXdr, 'base64');
+  const storage = data.contractData().val().instance().storage() ?? [];
+  for (const m of storage) {
+    const k = m.key();
+    const sym = k.switch().name === 'scvVec' ? k.vec()?.[0] : undefined;
+    if (
+      sym?.switch().name === 'scvSymbol' &&
+      sym.sym().toString() === 'Count' &&
+      k.vec()?.length === 1
+    ) {
+      if (m.val().switch().name !== 'scvU32') throw new Error('Count is not a u32');
+      return m.val().u32();
+    }
+  }
+  throw new Error('instance has no Count');
+}
+
+// The subject address an `Index(i)` entry points at.
+export function decodeIndex(indexEntryXdr: string): string {
+  const data = xdr.LedgerEntryData.fromXDR(indexEntryXdr, 'base64');
+  return Address.fromScVal(data.contractData().val()).toString();
+}
+
 const hex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 

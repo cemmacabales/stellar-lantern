@@ -105,6 +105,10 @@ export {
 } from './token';
 export {
   entryLedgerKey,
+  countLedgerKey,
+  indexLedgerKey,
+  decodeCount,
+  decodeIndex,
   decodeEntry,
   interpretLedgerEntries,
   createRegistryScreener,
