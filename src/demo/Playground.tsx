@@ -1,12 +1,12 @@
 // The D4 public playground shell (#183). Page frame only: the input (#184),
 // the seeded gallery (#185) and the registry panel (#186) land in the regions
-// below. Testnet only, hard-coded — NETWORKS.PUBLIC has no registry.
+// below. Testnet only, hard-coded (DEMO_NETWORK) — NETWORKS.PUBLIC has no
+// registry.
 
 import type { ReactNode } from 'react';
 import { TESTNET_REGISTRY_ID } from '@lantern/scanner';
-import { NETWORKS } from '@shared/constants';
-
-export const DEMO_NETWORK = NETWORKS.TESTNET;
+import { DEMO_NETWORK } from './scan';
+import { ScanPanel } from './ScanPanel';
 
 const REGISTRY_URL = `https://stellar.expert/explorer/testnet/contract/${TESTNET_REGISTRY_ID}`;
 
@@ -54,7 +54,7 @@ export function Playground() {
         <div className="mt-8 grid gap-4 lg:grid-cols-3">
           <div className="grid gap-4 lg:col-span-2">
             <Region id="scan-input" title="Your transaction">
-              Paste a transaction or compose a payment. Coming next.
+              <ScanPanel />
             </Region>
             <Region id="examples" title="Try an example">
               Seeded examples, including a known scam. Coming next.

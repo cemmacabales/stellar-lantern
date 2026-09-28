@@ -31,8 +31,9 @@ describe('self-hosted fonts', () => {
     for (const family of ['Inter', 'Roboto Mono', 'Material Symbols Outlined']) {
       expect(fontsCss).toContain(`font-family: '${family}';`);
     }
-    // The icon class and the Tailwind font stacks use exactly these names.
-    expect(tailwindCss).toContain("font-family: 'Material Symbols Outlined';");
+    // The icon class sits beside its @font-face (so the wallet and the /demo
+    // playground both get it from this one file) and uses exactly that name.
+    expect(fontsCss).toMatch(/\.material-symbols-outlined \{\s*font-family: 'Material Symbols Outlined';/);
   });
 
   it('every font file it points at is in public/fonts, with its licence', () => {

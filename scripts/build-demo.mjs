@@ -7,8 +7,9 @@
 //                                   # homepage/demo/ differs from it
 //
 // Every build (check or not) also asserts on the emitted files themselves:
-//   - the bundle carries @lantern/scanner — grepped from the built JS, so the
-//     "same scanner package the extension uses" claim is checked on the output;
+//   - the bundle carries the @lantern/scanner pipeline — grepped from the built
+//     JS, so the "same scanner package the extension uses" claim is checked on
+//     the output;
 //   - no reference to the retired lantern.artisam.xyz domain (#173);
 //   - no third-party font or CDN host, since the page must load nothing
 //     from anyone else (#128's rule for the wallet, applied here).
@@ -23,9 +24,10 @@ const OUT_REAL = join(ROOT, 'homepage', 'demo');
 const check = process.argv.includes('--check');
 const OUT = check ? join(ROOT, 'dist-report', '.demo-check') : OUT_REAL;
 
-// A string only the scanner package defines (packages/lantern-scanner/src/
-// registry.ts): the testnet registry contract id.
-const SCANNER_MARKER = 'CBJWD6SAQ3OGLDKMQROSWVJGW6U27AESLJIURTMFPLNC4UQH5H2G623F';
+// A string only the scan pipeline's verdict stage emits (packages/lantern-
+// scanner/src/verdict.ts) and the page never prints itself: present only if
+// `runPipeline` is really in the bundle, not merely the package's constants.
+const SCANNER_MARKER = 'screen_unknown';
 const FORBIDDEN = [
   'lantern.artisam.xyz',
   'fonts.googleapis.com',
@@ -61,7 +63,7 @@ if (!existsSync(join(OUT, 'index.html'))) fail('no index.html emitted');
 
 const text = built.filter((f) => /\.(html|js|css)$/.test(f));
 if (!text.some((f) => f.endsWith('.js') && readFileSync(f, 'utf8').includes(SCANNER_MARKER))) {
-  fail('the built JS does not carry @lantern/scanner (registry id not found)');
+  fail('the built JS does not carry the @lantern/scanner pipeline (verdict code not found)');
 }
 for (const f of text) {
   const body = readFileSync(f, 'utf8');
