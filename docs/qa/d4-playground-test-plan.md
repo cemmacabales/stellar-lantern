@@ -112,7 +112,7 @@ Open the page first, then turn the network off: Wi-Fi off / airplane mode on the
 |---|---|---|
 | 5.1 | **Run it** on each of the six examples | Every one renders a verdict with **"Using cached simulation."** and the recording dates visible. The verdicts match §4.1–§4.6 |
 | 5.2 | Example 2 offline | **high / block_confirm**, *Reported in the scam registry*. **Hard blocker if not** |
-| 5.3 | Paste the safe XDR → **Scan it** | It **fails closed**: the address reads *Not checked — unverified — Couldn't check: the registry couldn't be reached*, and the risk is **not** low. The note under the result says pasted input has no offline copy. **Hard blocker if it shows *Not in the scam registry* or *Checked by Lantern*** |
+| 5.3 | Paste the safe XDR → **Scan it** | It **fails closed**: the address reads *Not checked — unverified — Couldn't check: the registry couldn't be reached*, and the risk is **not** low (the badge reads *Caution — review below*). **Hard blocker if it shows *Not in the scam registry* or *Checked by Lantern*** |
 | 5.4 | Compose anything → **Scan it** | A sentence that testnet (Horizon) couldn't be reached. Not stuck on *Scanning…* |
 | 5.5 | Scam registry → **Refresh** | *"Registry unavailable right now … That doesn't mean nothing has been reported."* **Not** an empty list and **not** a count of 0 |
 | 5.6 | Turn the network back on → **Refresh** | The registry list comes back |
