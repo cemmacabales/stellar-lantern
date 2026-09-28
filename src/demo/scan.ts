@@ -114,14 +114,22 @@ export async function composePayment(fields: ComposeFields, lookup: AccountLooku
       error: 'The “from” account doesn’t exist on testnet, so there is no payment to build. Try one of the examples instead.',
     };
   }
-  const tx = new TransactionBuilder(new Account(from, source.sequence), {
-    fee: BASE_FEE,
-    networkPassphrase: DEMO_NETWORK.passphrase,
-  })
-    .addOperation(Operation.payment({ destination: to, asset: Asset.native(), amount }))
-    .setTimeout(300)
-    .build();
-  return { ok: true, xdr: tx.toXDR(), source: from, destinationFunded: destination !== 'missing' };
+  // The regex above bounds decimals, not magnitude: the SDK throws for an
+  // amount past int64 stroops (922337203685.4775807 XLM). Never surface that.
+  let xdr: string;
+  try {
+    xdr = new TransactionBuilder(new Account(from, source.sequence), {
+      fee: BASE_FEE,
+      networkPassphrase: DEMO_NETWORK.passphrase,
+    })
+      .addOperation(Operation.payment({ destination: to, asset: Asset.native(), amount }))
+      .setTimeout(300)
+      .build()
+      .toXDR();
+  } catch {
+    return { ok: false, error: 'That amount is too large for a Stellar payment.' };
+  }
+  return { ok: true, xdr, source: from, destinationFunded: destination !== 'missing' };
 }
 
 // ── Scan ─────────────────────────────────────────────────────────────────────

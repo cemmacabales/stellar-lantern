@@ -19,7 +19,7 @@ type Mode = 'paste' | 'compose';
 type State =
   | { kind: 'idle' }
   | { kind: 'running' }
-  | { kind: 'error'; message: string; missingSource?: boolean }
+  | { kind: 'error'; message: string; missingSource?: boolean; network?: true }
   | { kind: 'done'; scan: DemoScan };
 
 const field =
@@ -36,20 +36,33 @@ export function ScanPanel() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     setState({ kind: 'running' });
-    let input: { xdr: string; source: string; destinationFunded?: boolean };
-    if (mode === 'paste') {
-      const p = preparePasted(pasted);
-      if (!p.ok) return setState({ kind: 'error', message: p.error });
-      input = p;
-    } else {
-      const c = await composePayment({ from, to, amount });
-      if (!c.ok) {
-        return setState({ kind: 'error', message: c.error, ...(c.missingSource ? { missingSource: true } : {}) });
+    try {
+      let input: { xdr: string; source: string; destinationFunded?: boolean };
+      if (mode === 'paste') {
+        const p = preparePasted(pasted);
+        if (!p.ok) return setState({ kind: 'error', message: p.error });
+        input = p;
+      } else {
+        const c = await composePayment({ from, to, amount });
+        if (!c.ok) {
+          return setState({
+            kind: 'error',
+            message: c.error,
+            ...(c.missingSource ? { missingSource: true } : {}),
+          });
+        }
+        input = c;
       }
-      input = c;
+      const out = await runDemoScan(input);
+      setState(
+        out.ok
+          ? { kind: 'done', scan: out.scan }
+          : { kind: 'error', message: out.error, ...(mode === 'paste' ? { network: true } : {}) },
+      );
+    } catch {
+      // Backstop: nothing may leave the page stuck on "Scanning…".
+      setState({ kind: 'error', message: 'Something went wrong, and nothing was scanned. Try again.' });
     }
-    const out = await runDemoScan(input);
-    setState(out.ok ? { kind: 'done', scan: out.scan } : { kind: 'error', message: out.error });
   }
 
   const tab = (m: Mode, label: string) => (
@@ -129,7 +142,11 @@ export function ScanPanel() {
                 See the examples.
               </a>
             )}
-            {mode === 'paste' && <p className="mt-2 text-xs text-on-surface-variant">Pasted input has no offline copy: if testnet is down, try again later.</p>}
+            {state.network && (
+              <p className="mt-2 text-xs text-on-surface-variant">
+                Pasted input has no offline copy: if testnet is down, try again later.
+              </p>
+            )}
           </div>
         )}
         {state.kind === 'done' && <ScanResultView scan={state.scan} />}

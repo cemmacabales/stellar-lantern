@@ -109,6 +109,17 @@ describe('composePayment', () => {
     }
   });
 
+  it('turns an amount beyond int64 into a sentence instead of throwing', async () => {
+    const c = await composePayment({ from, to: FLAGGED, amount: '99999999999999' }, async () => ({
+      sequence: '100',
+    }));
+    expect(c).toMatchObject({ ok: false });
+    if (!c.ok) {
+      expect(c.error).toBe('That amount is too large for a Stellar payment.');
+      expect(c.error).not.toMatch(/Error|at \w+ \(|undefined/);
+    }
+  });
+
   it('fails with a reason when Horizon is down', async () => {
     const c = await composePayment({ from, to: FLAGGED, amount: '1' }, async () => {
       throw new Error('503');
