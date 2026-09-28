@@ -5,6 +5,7 @@
 import { useRef, useState } from 'react';
 import { EXAMPLES, runExample, type Example, type ExampleOutcome } from './examples';
 import { ScanResultView } from './ScanPanel';
+import { demoTelemetry } from './telemetry';
 
 type State =
   | { kind: 'idle' }
@@ -124,6 +125,12 @@ export function Examples() {
       outcome = { ok: false, error: 'Something went wrong, and nothing was scanned. Try again.' };
     }
     if (latest.current !== ticket) return;
+    // Counted only when shown, and always as `seeded`: one click on a
+    // built-in example is not a visitor scanning their own transaction.
+    if (outcome.ok) {
+      const { risk, action } = outcome.scan.result;
+      demoTelemetry().scanned({ risk, action, origin: 'seeded' });
+    }
     setState({ kind: 'done', id: example.id, outcome });
   }
 

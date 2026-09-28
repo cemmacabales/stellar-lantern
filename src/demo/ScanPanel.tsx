@@ -14,6 +14,7 @@ import {
   type DemoScan,
   type ScreeningTone,
 } from './scan';
+import { demoTelemetry } from './telemetry';
 
 type Mode = 'paste' | 'compose';
 type State =
@@ -54,6 +55,10 @@ export function ScanPanel() {
         input = c;
       }
       const out = await runDemoScan(input);
+      if (out.ok) {
+        const { risk, action } = out.scan.result;
+        demoTelemetry().scanned({ risk, action, origin: mode === 'paste' ? 'pasted' : 'composed' });
+      }
       setState(
         out.ok
           ? { kind: 'done', scan: out.scan }

@@ -1,7 +1,7 @@
 // The analytics page (#104): the activity report, served.
 //
 //   GET  /admin                no session → login form; session → the dashboard (#106)
-//                              ?since=YYYY-MM-DD&until=YYYY-MM-DD&platform=extension|android
+//                              ?since=YYYY-MM-DD&until=YYYY-MM-DD&platform=extension|android|demo
 //   GET  /admin/wallets        one row per identity, ?sort=lastSeen|firstSeen|events|sessions|txSigned|highRiskGated
 //   GET  /admin/wallets/:key   drill-down: key = G… address, or the install id of an anonymous install
 //   GET  /admin/report         the full emailed-style report for the window
@@ -137,7 +137,10 @@ export function parseFilters(q: Record<string, string | undefined>, now: Date): 
   }
   const w = q.wallet ?? q.account ?? '';
   const wallet = ACCOUNT_RE.test(w) || UUID_RE.test(w) ? w : '';
-  const platform = q.platform === 'extension' || q.platform === 'android' ? q.platform : '';
+  const platform =
+    q.platform === 'extension' || q.platform === 'android' || q.platform === 'demo'
+      ? q.platform
+      : '';
   return { since, until, wallet, platform };
 }
 
@@ -237,7 +240,7 @@ function toolbar(f: Filters, action: string): string {
   return `<form class="bar" method="get" action="${esc(action)}">
 <label>From (inclusive)<input type="date" name="since" value="${esc(f.since)}"></label>
 <label>To (exclusive)<input type="date" name="until" value="${esc(f.until)}"></label>
-<label>Platform<select name="platform">${opt('', 'all')}${opt('extension', 'Chrome')}${opt('android', 'Android')}</select></label>
+<label>Platform<select name="platform">${opt('', 'all')}${opt('extension', 'Chrome')}${opt('android', 'Android')}${opt('demo', 'Playground')}</select></label>
 <button type="submit">Apply</button>
 <button class="ghost" type="submit" formmethod="post" formaction="/admin/logout">Sign out</button>
 </form>`;
