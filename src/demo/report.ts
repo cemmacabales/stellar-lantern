@@ -16,6 +16,7 @@ import {
   readSubject,
   type RegistryReason,
 } from '@core/registry/report';
+import { TransactionBuilder } from '@stellar/stellar-sdk';
 import type { ScreenAnswer } from '@lantern/scanner';
 import { DEMO_NETWORK, runDemoScan, type DemoScan } from './scan';
 
@@ -137,6 +138,23 @@ export async function signAndSubmit(
     }));
   } catch {
     return { ok: false, error: `${wallet.productName} didn’t sign the report. Nothing was sent.` };
+  }
+  // Submit only what Lantern scanned: a buggy or hostile connector could hand
+  // back another transaction (other operations, a fee bump, another source).
+  // The hash covers everything but the signatures.
+  const hashOf = (envelope: string) =>
+    TransactionBuilder.fromXDR(envelope, DEMO_NETWORK.passphrase).hash().toString('hex');
+  let same: boolean;
+  try {
+    same = hashOf(signed) === hashOf(report.xdr);
+  } catch {
+    same = false;
+  }
+  if (!same) {
+    return {
+      ok: false,
+      error: `${wallet.productName} returned a different transaction from the one Lantern checked. Nothing was sent.`,
+    };
   }
   const fetchImpl = deps.fetchImpl ?? fetch;
   try {

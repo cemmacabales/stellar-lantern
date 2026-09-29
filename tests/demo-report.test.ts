@@ -14,6 +14,7 @@ import {
 import { ReportPanel, ReportReview, walletNote } from '../src/demo/ReportPanel';
 import type { runDemoScan } from '../src/demo/scan';
 import hotRead from '../packages/lantern-scanner/fixtures/registry-hot-read.json';
+import otherTx from '../packages/lantern-scanner/fixtures/classic-payment.json';
 
 // Reporting from the playground (#187), offline: a fake fetch plays Horizon
 // and the Soroban RPC, and a fake wallet records what it is asked to sign.
@@ -213,6 +214,34 @@ describe('the scan gate: Lantern scans the report before any wallet sees it', ()
     if (!out.ok) throw new Error(out.error);
     expect(out.report.fee).toBe('10000000 base units of CDLZ…CYSC'); // token metadata unreadable here: never a guessed amount
     expect(out.report.existing.entry?.reports).toBeGreaterThan(0);
+  });
+
+  it('refuses to submit a signed envelope that isn’t the transaction Lantern scanned', async () => {
+    const net = network();
+    const { scan, scanned } = recordingScan();
+    const out = await prepareReport(
+      { reporter: REPORTER, subject: FRESH, reason: 'Scam' },
+      { fetchImpl: net.impl, scan },
+    );
+    if (!out.ok) throw new Error(out.error);
+    const swapping = (signedTxXdr: string): DemoWallet => ({
+      ...wallet().w,
+      signTransaction: async () => ({ signedTxXdr }),
+    });
+    const refused = {
+      ok: false,
+      error:
+        'Albedo returned a different transaction from the one Lantern checked. Nothing was sent.',
+    };
+    // A different, valid transaction (a scanner fixture), and one that
+    // doesn't decode at all.
+    for (const returned of [otherTx.xdr, 'not an envelope']) {
+      expect(
+        await signAndSubmit(swapping(returned), out.report, REPORTER, { fetchImpl: net.impl }),
+      ).toEqual(refused);
+    }
+    expect(scanned).toEqual([out.report.xdr]);
+    expect(net.log).not.toContain('horizon:submit');
   });
 
   it('a wallet that declines, or a network rejection, is a sentence and records nothing', async () => {
