@@ -4,7 +4,14 @@
 // shared report module's palette and escaping so the pages match the emailed
 // report (src/core/telemetry/report.ts).
 
-import { esc, CSS, type Row, type UserTrail } from '@lantern/telemetry-report';
+import {
+  esc,
+  CSS,
+  summarizeDemo,
+  type DemoSummary,
+  type Row,
+  type UserTrail,
+} from '@lantern/telemetry-report';
 import { isJoin, type DownloadRow, type DownloadTarget } from '../downloads/store';
 
 // ── Model ────────────────────────────────────────────────────────────────────
@@ -54,6 +61,9 @@ export interface Dashboard {
   byEvent: Array<{ event: string; count: number; wallets: number }>;
   verdicts: Record<string, number>; // tx_scanned by risk
   daily: Daily[];
+  // The public playground (#188), split by where the transaction came from.
+  // Its rows carry no wallet, so none of the numbers above include them.
+  demo: DemoSummary;
 }
 
 const truncate = (a: string): string => `${a.slice(0, 4)}…${a.slice(-4)}`;
@@ -203,6 +213,7 @@ export function buildDashboard(allRows: Row[], since: string, until: string): Da
       .sort((a, b) => b.count - a.count || a.event.localeCompare(b.event)),
     verdicts,
     daily: dailySeries(rows, since, until),
+    demo: summarizeDemo(allRows),
   };
 }
 
@@ -453,6 +464,12 @@ export function renderDashboard(
         .map((k) => `<tr><td>${esc(k)}</td><td class="n">${n(d.verdicts[k]!)}</td></tr>`)
         .join('')}</table>`
     : '<p class="note">no transaction scans yet</p>';
+  const risks = (o: Record<string, number>) =>
+    ['high', 'medium', 'low'].map((k) => `<td class="n">${n(o[k] ?? 0)}</td>`).join('');
+  const demo =
+    d.demo.pageLoads === 0
+      ? '<p class="note">no playground scans in this window</p>'
+      : `<table><tr><th>origin</th><th class="n">scans</th><th class="n">high</th><th class="n">medium</th><th class="n">low</th></tr><tr><td>visitor’s own (pasted ${n(d.demo.byOrigin.pasted ?? 0)} · composed ${n(d.demo.byOrigin.composed ?? 0)})</td><td class="n">${n(d.demo.visitor)}</td>${risks(d.demo.byRisk.visitor)}</tr><tr><td>seeded examples</td><td class="n">${n(d.demo.seeded)}</td>${risks(d.demo.byRisk.seeded)}</tr></table><p class="note">${n(d.demo.pageLoads)} page loads. Only the first row counts toward §6.3; example clicks are never added to it.</p>`;
   const body = `<h1><span>Lantern</span> analytics</h1><p class="meta">${esc(opts.window)}</p>
 ${tabs('dashboard', opts.qs)}
 ${opts.toolbar}
@@ -460,6 +477,7 @@ ${d.events === 0 ? '<div class="empty">No activity in this window yet.</div>' : 
 ${top}
 <div class="card"><h2>Daily activity</h2>${dailyChart(d.daily)}</div>
 <div class="grid2"><div class="card"><h2>Events</h2>${events}</div><div class="card"><h2>Transaction scans by risk</h2>${verdicts}</div></div>
+<div class="card"><h2>Public playground scans</h2>${demo}</div>
 ${opts.downloads ?? ''}
 <div class="actions"><a class="primary" href="/admin/wallets${opts.qs ? '?' + esc(opts.qs) : ''}">Wallets →</a><a href="/admin/export.csv?${esc(opts.qs)}">Download CSV</a><a href="/admin/export.json?${esc(opts.qs)}">Download JSON</a></div>`;
   return pageShell('Lantern analytics', body);

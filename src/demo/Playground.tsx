@@ -70,7 +70,13 @@ export function Playground() {
 
       <footer className="border-t border-outline-variant">
         <div className="mx-auto flex max-w-5xl flex-col gap-1 px-4 py-4 text-xs text-on-surface-variant sm:flex-row sm:justify-between">
-          <span>Lantern · Stellar {DEMO_NETWORK.id.toLowerCase()}</span>
+          <span>
+            Lantern · Stellar {DEMO_NETWORK.id.toLowerCase()} · Each finished scan sends one anonymous count (risk,
+            action, and pasted / composed / example). No transaction, address or amount, no cookie, nothing stored.{' '}
+            <a href="/privacy-policy.html" className="underline hover:text-on-surface">
+              Privacy
+            </a>
+          </span>
           <a href={REGISTRY_URL} target="_blank" rel="noopener noreferrer" className="break-all hover:underline">
             Registry contract {TESTNET_REGISTRY_ID}
           </a>
