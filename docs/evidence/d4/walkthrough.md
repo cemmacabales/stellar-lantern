@@ -19,14 +19,14 @@ Recorded against the **live** page, `https://golantern.xyz/demo/`, never localho
 Timecodes are targets. Narration is about 150 words a minute; cut words before you speed up.
 
 ### 1 · Open the demo — `0:00–0:20`
-**On screen:** `golantern.xyz/demo` loads: *Scan a Stellar transaction*, the yellow *Testnet demo — nothing here moves real funds* bar, the three regions.
+**On screen:** `golantern.xyz/demo` loads: *Scan a Stellar transaction*, the yellow *Testnet demo — nothing here moves real funds* bar, the four regions.
 
 > "This is Lantern's playground. It runs the same security scanner that's built into the Lantern wallet, in a normal web page. There's nothing to install and nothing to sign in to. It reads a Stellar transaction before anyone signs it, and tells you what it really does."
 
 ### 2 · Scan a safe transaction — `0:20–0:50`
-**On screen:** *Try an example* → **A safe payment** → *Run it*. Hold on the result: the green *Checked by Lantern* badge, *Risk low · action allow*, the summary labelled *written by Lantern's AI explainer*, the screening row *Not in the scam registry*, and *What moves*.
+**On screen:** *Try an example* → **A safe payment** → *Run it*. Hold on the result: the *Checked by Lantern* badge, *Risk low · action allow*, the summary labelled *written by Lantern's AI explainer*, the screening row *Not in the scam registry*, and *What moves*.
 
-> "First, an ordinary payment: twenty-five XLM to another account. Lantern simulates it on the Stellar testnet, works out exactly what moves and to whom, and checks the recipient against an on-chain scam registry. Low risk. The sentence is written by an AI model, and the label says so, but the verdict never comes from the AI. It comes from the scanner's own rules."
+> "First, an ordinary payment: twenty-five XLM to another account. Lantern decodes it, works out exactly what moves and to whom, and checks the recipient against an on-chain scam registry. Low risk. The sentence is written by an AI model, and the label says so, but the verdict never comes from the AI. It comes from the scanner's own rules."
 
 ### 3 · Scan a malicious transaction — `0:50–1:25`
 **On screen:** **Payment to a reported scammer** (the card marked *The malicious one*) → *Run it*. Hold on: red *High risk — action needed*, *Risk high · action block_confirm*, the *Reported address* reason, and the screening row *Reported in the scam registry — Scam · N reports · Active*.
