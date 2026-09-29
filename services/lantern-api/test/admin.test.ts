@@ -168,6 +168,8 @@ describe('/admin login', () => {
       '<tr><td>seeded examples</td><td class="n">3</td><td class="n">2</td><td class="n">0</td><td class="n">1</td></tr>',
     );
     expect(page).toContain('Only the first row counts toward §6.3');
+    // A visit that never scans sends nothing, so this is not traffic.
+    expect(page).toContain('2 page loads that scanned.');
     // The wallet numbers are what they were: one wallet, no demo "wallets".
     expect(page).toContain('<b>1</b><span>wallets</span>');
     expect(page).not.toContain(L1);

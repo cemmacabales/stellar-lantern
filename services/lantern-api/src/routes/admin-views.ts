@@ -469,7 +469,7 @@ export function renderDashboard(
   const demo =
     d.demo.pageLoads === 0
       ? '<p class="note">no playground scans in this window</p>'
-      : `<table><tr><th>origin</th><th class="n">scans</th><th class="n">high</th><th class="n">medium</th><th class="n">low</th></tr><tr><td>visitor’s own (pasted ${n(d.demo.byOrigin.pasted ?? 0)} · composed ${n(d.demo.byOrigin.composed ?? 0)})</td><td class="n">${n(d.demo.visitor)}</td>${risks(d.demo.byRisk.visitor)}</tr><tr><td>seeded examples</td><td class="n">${n(d.demo.seeded)}</td>${risks(d.demo.byRisk.seeded)}</tr></table><p class="note">${n(d.demo.pageLoads)} page loads. Only the first row counts toward §6.3; example clicks are never added to it.</p>`;
+      : `<table><tr><th>origin</th><th class="n">scans</th><th class="n">high</th><th class="n">medium</th><th class="n">low</th></tr><tr><td>visitor’s own (pasted ${n(d.demo.byOrigin.pasted ?? 0)} · composed ${n(d.demo.byOrigin.composed ?? 0)})</td><td class="n">${n(d.demo.visitor)}</td>${risks(d.demo.byRisk.visitor)}</tr><tr><td>seeded examples</td><td class="n">${n(d.demo.seeded)}</td>${risks(d.demo.byRisk.seeded)}</tr></table><p class="note">${n(d.demo.pageLoads)} page loads that scanned. Only the first row counts toward §6.3; example clicks are never added to it.</p>`;
   const body = `<h1><span>Lantern</span> analytics</h1><p class="meta">${esc(opts.window)}</p>
 ${tabs('dashboard', opts.qs)}
 ${opts.toolbar}
