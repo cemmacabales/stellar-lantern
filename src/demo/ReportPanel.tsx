@@ -17,7 +17,7 @@ import {
   type DemoWallet,
   type PreparedReport,
 } from './report';
-import { DEMO_NETWORK } from './scan';
+import { DEMO_NETWORK, resetDemoScreening } from './scan';
 import { ScanResultView } from './ScanPanel';
 
 type Step =
@@ -189,6 +189,8 @@ export function ReportPanel() {
     }
     const after = await rescreen(subject).catch(() => null);
     setStep({ kind: 'done', hash: out.hash, after });
+    // The next scan of a payment to this address must see the new entry.
+    resetDemoScreening();
     dispatchEvent(new Event(REGISTRY_CHANGED));
   }
 
