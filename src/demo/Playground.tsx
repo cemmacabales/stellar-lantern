@@ -8,6 +8,7 @@ import { TESTNET_REGISTRY_ID } from '@lantern/scanner';
 import { DEMO_NETWORK } from './scan';
 import { Examples } from './Examples';
 import { RegistryPanel } from './RegistryPanel';
+import { ReportPanel } from './ReportPanel';
 import { ScanPanel } from './ScanPanel';
 
 const REGISTRY_URL = `https://stellar.expert/explorer/testnet/contract/${TESTNET_REGISTRY_ID}`;
@@ -60,6 +61,9 @@ export function Playground() {
             </Region>
             <Region id="examples" title="Try an example">
               <Examples />
+            </Region>
+            <Region id="report" title="Report an address">
+              <ReportPanel />
             </Region>
           </div>
           <Region id="registry" title="Scam registry">
