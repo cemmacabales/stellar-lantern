@@ -60,6 +60,13 @@ export function demoDeps(): PipelineDeps {
   return liveDeps;
 }
 
+/** Forget the page's cached answers. The screener keeps a not-flagged answer
+ *  for 60 s, so after a report lands the next scan must re-read the registry,
+ *  or scanning the same payment again would still say "not in the registry". */
+export function resetDemoScreening(): void {
+  liveDeps = null;
+}
+
 // ── Input ────────────────────────────────────────────────────────────────────
 
 export type Prepared = { ok: true; xdr: string; source: string } | { ok: false; error: string };
