@@ -55,6 +55,18 @@ describe('parseScannedRecipient', () => {
     expect(out.note).toMatch(/5 USDC/);
   });
 
+  it('treats asset_code XLM with an issuer as an issued token, not native XLM', () => {
+    // Anyone can issue a token coded "XLM"; SEP-0007 names native XLM by
+    // omitting asset_code, so an issuer means another asset.
+    const out = parseScannedRecipient(
+      `web+stellar:pay?destination=${G}&amount=5&asset_code=XLM&asset_issuer=${G}`,
+    );
+    expect(out).toMatchObject({ ok: true, destination: G });
+    if (!out.ok) return;
+    expect(out.amount).toBeUndefined();
+    expect(out.note).toMatch(/5 XLM/);
+  });
+
   it('fills the amount when the request is for XLM, named or implied', () => {
     for (const q of ['', '&asset_code=XLM', '&asset_code=native']) {
       const out = parseScannedRecipient(`web+stellar:pay?destination=${G}&amount=7${q}`);

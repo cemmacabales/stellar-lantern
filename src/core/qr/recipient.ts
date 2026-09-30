@@ -56,8 +56,11 @@ export function parseScannedRecipient(raw: string): ScannedRecipient {
   // amount meant for another asset is never filled in: 5 USDC must not
   // become 5 XLM.
   const assetCode = params.get('asset_code')?.trim();
+  // Native XLM is expressed by omitting asset_code (SEP-0007). Any code with an
+  // issuer is an issued asset, even one coded "XLM", which anyone can issue.
+  const assetIssuer = params.get('asset_issuer')?.trim();
   const otherAsset =
-    assetCode && !['XLM', 'NATIVE'].includes(assetCode.toUpperCase())
+    assetCode && (assetIssuer || !['XLM', 'NATIVE'].includes(assetCode.toUpperCase()))
       ? assetCode.slice(0, 12)
       : null;
   const amount = params.get('amount')?.trim();
