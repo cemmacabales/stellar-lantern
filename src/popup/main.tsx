@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { isNativePlatform } from '@shared/kv';
 import { App } from './App';
 import { ToastProvider } from './components/Toast';
+import { listenForOpenLinks } from './hooks/useOpenLink';
 import '../styles/tailwind.css';
 
 // On Android (Capacitor) fill the whole device viewport + respect safe areas,
@@ -24,6 +25,9 @@ if (isNativePlatform()) {
     }
   })();
 }
+
+// `lantern://open?url=…` links from other apps (Chrome) open in the Apps tab.
+listenForOpenLinks();
 
 // Expanded ("open in full tab") mode — same wallet rendered as a centered card.
 if (new URLSearchParams(window.location.search).has('expanded')) {

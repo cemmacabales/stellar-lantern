@@ -1,11 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Lantern</string>
-    <string name="title_activity_main">Lantern</string>
-    <string name="package_name">com.lantern.wallet</string>
-    <string name="custom_url_scheme">com.lantern.wallet</string>
-    <!-- Sites allowed to detect Lantern (getInstalledRelatedApps): Centient and its beta. The debug
-         build overrides this to add a loopback dev server (src/debug). -->
+    <!-- Debug (testnet) build: also let a dApp served on this device's loopback
+         (e.g. `adb reverse tcp:3000 tcp:3000`) detect Lantern, for local testing. -->
     <string name="asset_statements" translatable="false">
     [{
       \"relation\": [\"delegate_permission/common.handle_all_urls\"],
@@ -14,6 +10,10 @@
     {
       \"relation\": [\"delegate_permission/common.handle_all_urls\"],
       \"target\": { \"namespace\": \"web\", \"site\": \"https://beta.centient.work\" }
+    },
+    {
+      \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+      \"target\": { \"namespace\": \"web\", \"site\": \"http://127.0.0.1:3000\" }
     }]
     </string>
 </resources>

@@ -22,7 +22,22 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- lantern://open?url=<https URL> opens a dApp in the Apps tab.
+                 BROWSABLE so a site can fire it from Chrome as an intent:// link
+                 (src/core/miniapps/openLink.ts reads and checks the URL). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="lantern" android:host="open" />
+            </intent-filter>
+
         </activity>
+
+        <!-- Sites that may see Lantern is installed, via Chrome's
+             navigator.getInstalledRelatedApps() (the site's web manifest must
+             also list com.lantern.wallet in related_applications). -->
+        <meta-data android:name="asset_statements" android:resource="@string/asset_statements" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
