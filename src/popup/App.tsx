@@ -10,6 +10,7 @@ import { BottomNav, type Tab } from './components/BottomNav';
 import { Icon } from './components/Icon';
 import { useToast } from './components/Toast';
 import { usePasskeyAccount } from './hooks/usePasskeyAccount';
+import { usePendingOpenLink } from './hooks/useOpenLink';
 // First-paint path stays eager: splash → unlock/onboarding → home (assets),
 // plus Settings which shares the home shell. (#127)
 import { Onboarding } from './screens/Onboarding';
@@ -77,6 +78,20 @@ export function App() {
   // on every render. Computed at the top (before any early return) to respect the
   // Rules of Hooks; `settings` may be null on first paint, so guard for it. (#127)
   const network = useMemo(() => (settings ? resolveNetworkConfig(settings) : null), [settings]);
+
+  // A `lantern://open` link is waiting: once unlocked, close any full-screen
+  // overlay and switch to Apps, which opens it.
+  const openLink = usePendingOpenLink();
+  const unlocked = Boolean(status && !status.locked && status.address);
+  useEffect(() => {
+    if (!openLink || !unlocked) return;
+    setScanOpen(false);
+    setGuardiansOpen(false);
+    setCashOpen(false);
+    setSwapOpen(false);
+    setReceiveOpen(false);
+    setTab('apps');
+  }, [openLink, unlocked]);
 
   if (!status || !settings || !network) return <Splash />;
 

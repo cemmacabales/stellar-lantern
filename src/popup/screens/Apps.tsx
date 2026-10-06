@@ -38,6 +38,8 @@ import { ReportCounterparties, counterpartiesOf } from '../components/ReportAddr
 import { ScanBadge } from '../components/ScanBadge';
 import { HoldToConfirm } from '../components/HoldToConfirm';
 import { isNativePlatform } from '@shared/kv';
+import { readCoSignRequest, type CoSignRequest } from '@core/miniapps/coSign';
+import { usePendingOpenLink, takeOpenLink } from '../hooks/useOpenLink';
 
 // In-app mini-app browser (README "Mini-app browser for Stellar dApps").
 //
@@ -81,7 +83,7 @@ export function Apps({
 
   function launchApp(app: MiniApp) {
     if (__FEATURE_TELEMETRY__) track.miniAppOpened(app.id, isRemoteMiniApp(app));
-    // Remote apps load in the opaque-origin sandbox (like the URL bar), reaching
+    // Remote apps load in the sandbox (like the URL bar), reaching
     // the wallet only through the scan-gated postMessage bridge. Bundled apps are
     // first-party pages. Either way, "favoriting" changes nothing about this.
     if (isRemoteMiniApp(app)) {
@@ -96,6 +98,14 @@ export function Apps({
       origin: 'Bundled · Lantern',
     });
   }
+
+  // A `lantern://open` link (from Chrome) opens like a typed URL.
+  const openLink = usePendingOpenLink();
+  useEffect(() => {
+    if (!openLink) return;
+    const url = takeOpenLink();
+    if (url) setOpen({ kind: 'url', src: url, title: displayOrigin(url), origin: displayOrigin(url) });
+  }, [openLink]);
 
   function go() {
     const normalized = normalizeUrl(urlText);
@@ -294,7 +304,7 @@ function Browser({
   // approves) with { type: 'lantern:publicKey', publicKey, network }. Only the
   // public key + network are ever shared — never secrets, never signing. We only
   // trust messages from THIS app's frame (event.source check), and post back to
-  // that same frame (targetOrigin '*' is required for the opaque-origin sandbox).
+  // that same frame (targetOrigin '*', which also reaches a frame that navigated).
   const [connectReq, setConnectReq] = useState(false);
   const granted = useRef(false);
 
@@ -400,12 +410,85 @@ function Browser({
     setMsgReq(null);
   }
 
+  // A pending co-sign request (`lantern:signXdr`): the dApp built the
+  // transaction; Lantern adds its signature and hands it back unsubmitted.
+  // Same scan + re-check as a payment, since a signature is a signature.
+  const [coSignReq, setCoSignReq] = useState<{
+    req: CoSignRequest;
+    verdict: ScanVerdict;
+    scanInput: WalletScanInput;
+  } | null>(null);
+  const [coSigning, setCoSigning] = useState(false);
+  const [coSignErr, setCoSignErr] = useState<string | null>(null);
+
+  async function prepareCoSign(raw: { xdr?: unknown; networkPassphrase?: unknown }) {
+    const read = readCoSignRequest(raw, config.passphrase, address);
+    if (!read.ok) {
+      postToApp({ type: 'lantern:signRejected', error: read.error });
+      return;
+    }
+    postToApp({ type: 'lantern:signing' }); // ack so the dApp waits for review
+    try {
+      const scanInput: WalletScanInput = {
+        xdr: read.value.xdr,
+        networkPassphrase: config.passphrase,
+        rpcUrl: config.sorobanRpcUrl,
+        context: { network, fromAddress: address, origin: open.title },
+      };
+      const verdict = await scanTx(scanInput);
+      setConfirmText('');
+      setCoSignErr(null);
+      recheck.reset();
+      if (__FEATURE_TELEMETRY__) track.txScanned(verdict);
+      setCoSignReq({ req: read.value, verdict, scanInput });
+    } catch {
+      postToApp({ type: 'lantern:txError', error: 'Could not review the transaction.' });
+    }
+  }
+
+  async function approveCoSign() {
+    if (!coSignReq) return;
+    setCoSigning(true);
+    setCoSignErr(null);
+    const rc = await recheck.guard(coSignReq.verdict, coSignReq.scanInput);
+    setCoSignReq((cur) => (cur && cur.req.xdr === coSignReq.req.xdr ? { ...cur, verdict: rc.verdict } : cur));
+    if (!rc.proceed) {
+      setConfirmText('');
+      setCoSigning(false);
+      return;
+    }
+    const res = await sendMessage({
+      type: 'SIGN_ONLY',
+      xdr: coSignReq.req.xdr,
+      networkPassphrase: config.passphrase,
+    });
+    setCoSigning(false);
+    if (res.ok) {
+      postToApp({ type: 'lantern:xdrSigned', signedXdr: res.data.signedXdr });
+      setCoSignReq(null);
+    } else {
+      setCoSignErr(res.code === 'LOCKED' ? 'Wallet locked — reopen to unlock and retry.' : res.error);
+    }
+  }
+  function rejectCoSign() {
+    postToApp({ type: 'lantern:signRejected' });
+    setCoSignReq(null);
+    setCoSignErr(null);
+    recheck.reset();
+  }
+
   useEffect(() => {
     granted.current = false; // re-prompt per opened app
     function onMessage(e: MessageEvent) {
       const win = frameRef.current?.contentWindow;
       if (!win || e.source !== win) return; // only our embedded app
-      const data = e.data as { type?: string; intent?: unknown; message?: unknown } | null;
+      const data = e.data as {
+        type?: string;
+        intent?: unknown;
+        message?: unknown;
+        xdr?: unknown;
+        networkPassphrase?: unknown;
+      } | null;
       if (data?.type === 'lantern:getPublicKey') {
         postToApp({ type: 'lantern:connecting' }); // ack → dApp waits for approval
         if (granted.current) sendPublicKey();
@@ -422,6 +505,12 @@ function Browser({
           return;
         }
         if (typeof data.message === 'string') setMsgReq(data.message);
+      } else if (data?.type === 'lantern:signXdr') {
+        if (!granted.current) {
+          postToApp({ type: 'lantern:signRejected', error: 'Connect the wallet first.' });
+          return;
+        }
+        void prepareCoSign(data);
       }
     }
     window.addEventListener('message', onMessage);
@@ -652,9 +741,12 @@ function Browser({
           src={open.src}
           title={open.title}
           // Bundled apps are first-party extension pages (loaded same-origin so
-          // their relative app.js passes script-src 'self'); only remote URLs get
-          // the opaque-origin sandbox.
-          sandbox={isRemote ? 'allow-scripts allow-forms allow-popups' : undefined}
+          // their relative app.js passes script-src 'self'); only remote URLs are
+          // sandboxed. `allow-same-origin` lets a remote app be its OWN origin —
+          // keep a session cookie, call its own API — never Lantern's: it is
+          // cross-origin to the wallet either way, so it still reaches the wallet
+          // only through the bridge (matches SandboxedFrame).
+          sandbox={isRemote ? 'allow-scripts allow-forms allow-popups allow-same-origin' : undefined}
           className="h-full w-full border-0"
           onLoad={onFrameLoad}
         />
@@ -825,6 +917,104 @@ function Browser({
                   }`}
                 >
                   {submitting ? 'Sending…' : isHigh ? 'Sign anyway' : 'Approve & send'}
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Co-sign approval — the app built a transaction and wants Lantern's
+          signature added. Lantern signs only; the app submits it. */}
+      {coSignReq && (() => {
+        const { req, verdict } = coSignReq;
+        const isHigh = verdict.action === 'block_confirm';
+        const native = isNativePlatform();
+        const acknowledged = !isHigh || native || confirmText.trim().toUpperCase() === 'CONFIRM';
+        return (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cosign-sheet-title"
+            className="absolute inset-x-0 bottom-0 z-20 max-h-[80%] space-y-3 overflow-y-auto rounded-t-2xl border-t border-outline-variant/40 bg-surface-container p-4 shadow-layer-1"
+          >
+            <div className="flex items-center gap-2">
+              <Icon name="draw" size={18} className="text-primary-container" />
+              <span id="cosign-sheet-title" className="text-title-sm text-on-surface">
+                <span className="font-semibold">{open.title}</span> wants you to co-sign
+              </span>
+            </div>
+            <ol className="space-y-1 rounded-xl bg-surface-container-high p-3 text-label-md text-on-surface">
+              {req.operations.map((line, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="text-on-surface-variant">{i + 1}.</span>
+                  <span className="min-w-0 break-words">{line}</span>
+                </li>
+              ))}
+            </ol>
+            <p className="text-label-sm text-on-surface-variant">
+              Lantern adds your signature and hands the transaction back; {open.title} submits it.
+              {req.source !== address && (
+                <>
+                  {' '}The network fee is paid by{' '}
+                  <span className="font-mono">{truncateAddress(req.source, 4, 4)}</span>, not you.
+                </>
+              )}
+            </p>
+
+            {verdict.action === 'allow' ? (
+              <div className="flex items-center justify-between rounded-xl border border-tertiary-container/20 bg-surface-container-high p-3">
+                <p className="pr-2 text-label-md text-on-surface">{verdict.explanation}</p>
+                <ScanBadge risk="low" latencyMs={verdict.latencyMs} registry={verdict.registry} />
+              </div>
+            ) : (
+              <RiskCallout
+                risk={verdict.risk}
+                reasons={verdict.reasons}
+                explanation={verdict.explanation}
+                whatToDo={isHigh ? 'A dApp requested this. If you didn’t expect it, reject — signing can’t be undone.' : undefined}
+              />
+            )}
+
+            <RecheckNotice state={recheck.state} />
+
+            {isHigh && !native && (
+              <input
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder="Type CONFIRM to allow"
+                className="w-full rounded-lg border border-outline-variant bg-surface-container-high px-3 py-2 font-mono text-label-md text-on-surface placeholder:text-outline focus:border-primary-container focus:outline-none"
+              />
+            )}
+            {coSignErr && <p className="text-center text-label-md text-error">{coSignErr}</p>}
+
+            <div ref={recheck.ctaRef} className="flex scroll-mb-4 gap-2">
+              <button
+                onClick={rejectCoSign}
+                disabled={coSigning}
+                className="flex-1 rounded-full border border-outline px-4 py-2.5 text-label-md font-semibold text-on-surface-variant active:scale-95 disabled:opacity-50"
+              >
+                Reject
+              </button>
+              {isHigh && native ? (
+                <HoldToConfirm
+                  className="flex-1"
+                  label={coSigning ? 'Signing…' : 'Hold to Sign anyway'}
+                  danger
+                  onConfirm={approveCoSign}
+                  disabled={coSigning}
+                />
+              ) : (
+                <button
+                  onClick={approveCoSign}
+                  disabled={coSigning || !acknowledged}
+                  className={`flex-1 rounded-full px-4 py-2.5 text-label-md font-semibold active:scale-95 disabled:opacity-50 ${
+                    isHigh
+                      ? 'border border-error/50 text-error'
+                      : 'bg-primary-container text-on-primary-container shadow-primary'
+                  }`}
+                >
+                  {coSigning ? 'Signing…' : isHigh ? 'Sign anyway' : 'Sign'}
                 </button>
               )}
             </div>

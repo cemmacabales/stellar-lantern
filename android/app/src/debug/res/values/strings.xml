@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- Debug (testnet) build: also let a dApp served on this device's loopback
+         (e.g. `adb reverse tcp:3000 tcp:3000`) detect Lantern, for local testing. -->
+    <string name="asset_statements" translatable="false">
+    [{
+      \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+      \"target\": { \"namespace\": \"web\", \"site\": \"https://centient.work\" }
+    },
+    {
+      \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+      \"target\": { \"namespace\": \"web\", \"site\": \"http://127.0.0.1:3000\" }
+    }]
+    </string>
+</resources>
