@@ -9,6 +9,10 @@
     },
     {
       \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+      \"target\": { \"namespace\": \"web\", \"site\": \"https://beta.centient.work\" }
+    },
+    {
+      \"relation\": [\"delegate_permission/common.handle_all_urls\"],
       \"target\": { \"namespace\": \"web\", \"site\": \"http://127.0.0.1:3000\" }
     }]
     </string>

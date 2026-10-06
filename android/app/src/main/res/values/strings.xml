@@ -4,12 +4,16 @@
     <string name="title_activity_main">Lantern</string>
     <string name="package_name">com.lantern.wallet</string>
     <string name="custom_url_scheme">com.lantern.wallet</string>
-    <!-- Sites allowed to detect Lantern (getInstalledRelatedApps). The debug
+    <!-- Sites allowed to detect Lantern (getInstalledRelatedApps): Centient and its beta. The debug
          build overrides this to add a loopback dev server (src/debug). -->
     <string name="asset_statements" translatable="false">
     [{
       \"relation\": [\"delegate_permission/common.handle_all_urls\"],
       \"target\": { \"namespace\": \"web\", \"site\": \"https://centient.work\" }
+    },
+    {
+      \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+      \"target\": { \"namespace\": \"web\", \"site\": \"https://beta.centient.work\" }
     }]
     </string>
 </resources>
